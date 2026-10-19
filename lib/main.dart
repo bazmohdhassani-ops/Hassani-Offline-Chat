@@ -6,6 +6,7 @@ import 'firebase_options.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:record/record.dart';
+import 'remote_chat_page.dart';
 
 bool firebaseInitialized = false;
 
@@ -32,7 +33,7 @@ class HassaniChatApp extends StatelessWidget {
           colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF2563EB)),
           scaffoldBackgroundColor: const Color(0xFFF4F6FA),
         ),
-        home: const ChatsPage(),
+        home: firebaseInitialized ? const AuthGate() : const FirebaseUnavailablePage(),
       );
 }
 
@@ -277,4 +278,23 @@ class _ChatPageState extends State<ChatPage> {
           ]))),
         ]),
       );
+}
+
+
+class FirebaseUnavailablePage extends StatelessWidget {
+  const FirebaseUnavailablePage({super.key});
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    body: Center(child: Padding(padding: const EdgeInsets.all(24), child: Column(
+      mainAxisSize: MainAxisSize.min, children: [
+        const Icon(Icons.cloud_off, size: 64, color: Colors.blueGrey),
+        const SizedBox(height: 16),
+        const Text('اتصال به Firebase برقرار نشد', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 8),
+        const Text('انترنت را بررسی کن و برنامه را دوباره باز کن. نسخهٔ محلی قبلی هنوز در کُد موجود است.', textAlign: TextAlign.center),
+        const SizedBox(height: 16),
+        FilledButton(onPressed: () => main(), child: const Text('تلاش دوباره')),
+      ],
+    ))),
+  );
 }
