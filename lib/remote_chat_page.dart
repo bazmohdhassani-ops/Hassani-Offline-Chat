@@ -1,0 +1,198 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
+
+class AuthGate extends StatelessWidget {
+  const AuthGate({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<User?>(
+      stream: FirebaseAuth.instance.authStateChanges(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(body: Center(child: CircularProgressIndicator()));
+        }
+        if (snapshot.hasData) return const RemoteChatPage();
+        return const AuthPage();
+      },
+    );
+  }
+}
+
+class AuthPage extends StatefulWidget {
+  const AuthPage({super.key});
+  @override
+  State<AuthPage> createState() => _AuthPageState();
+}
+
+class _AuthPageState extends State<AuthPage> {
+  final email = TextEditingController();
+  final password = TextEditingController();
+  bool registering = false;
+  bool busy = false;
+  String? error;
+
+  Future<void> submit() async {
+    if (email.text.trim().isEmpty || password.text.length < 6) {
+      setState(() => error = 'ایمیل را بنویس و رمز عبور حداقل ۶ حرف داشته باشد.');
+      return;
+    }
+    setState(() { busy = true; error = null; });
+    try {
+      if (registering) {
+        await FirebaseAuth.instance.createUserWithEmailAndPassword(
+          email: email.text.trim(), password: password.text,
+        );
+      } else {
+        await FirebaseAuth.instance.signInWithEmailAndPassword(
+          email: email.text.trim(), password: password.text,
+        );
+      }
+    } on FirebaseAuthException catch (e) {
+      setState(() => error = switch (e.code) {
+        'email-already-in-use' => 'این ایمیل قبلاً ثبت شده است؛ وارد شو.',
+        'invalid-email' => 'ایمیل درست نیست.',
+        'weak-password' => 'رمز عبور قوی‌تر انتخاب کن.',
+        'user-not-found' || 'wrong-password' || 'invalid-credential' => 'ایمیل یا رمز عبور نادرست است.',
+        'network-request-failed' => 'اتصال انترنت را بررسی کن.',
+        'operation-not-allowed' => 'ورود ایمیلی هنوز در Firebase فعال نشده است.',
+        _ => 'ورود موفق نشد: ${e.message ?? e.code}',
+      });
+    } catch (e) {
+      setState(() => error = 'خطا: $e');
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
+  @override
+  void dispose() { email.dispose(); password.dispose(); super.dispose(); }
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    body: Center(child: SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 420), child: Column(
+        mainAxisAlignment: MainAxisAlignment.center, children: [
+          const Icon(Icons.forum_rounded, size: 72, color: Color(0xFF173B75)),
+          const SizedBox(height: 12),
+          const Text('Hassani Offline Chat', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          Text(registering ? 'ساخت حساب جدید' : 'ورود به حساب', style: const TextStyle(fontSize: 18)),
+          const SizedBox(height: 20),
+          TextField(controller: email, keyboardType: TextInputType.emailAddress, decoration: const InputDecoration(labelText: 'ایمیل', border: OutlineInputBorder())),
+          const SizedBox(height: 12),
+          TextField(controller: password, obscureText: true, decoration: const InputDecoration(labelText: 'رمز عبور (حداقل ۶ حرف)', border: OutlineInputBorder())),
+          if (error != null) Padding(padding: const EdgeInsets.only(top: 12), child: Text(error!, style: const TextStyle(color: Colors.red))),
+          const SizedBox(height: 16),
+          SizedBox(width: double.infinity, child: FilledButton(
+            onPressed: busy ? null : submit,
+            child: busy ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)) : Text(registering ? 'ثبت‌نام' : 'ورود'),
+          )),
+          TextButton(onPressed: busy ? null : () => setState(() { registering = !registering; error = null; }),
+            child: Text(registering ? 'حساب داری؟ وارد شو' : 'حساب نداری؟ ثبت‌نام کن')),
+          const SizedBox(height: 8),
+          const Text('برای آزمایش آنلاین، هر گوشی باید با حساب خودش وارد شود.', textAlign: TextAlign.center, style: TextStyle(color: Colors.black54)),
+        ],
+      )),
+    )),
+  );
+}
+
+class RemoteChatPage extends StatefulWidget {
+  const RemoteChatPage({super.key});
+  @override
+  State<RemoteChatPage> createState() => _RemoteChatPageState();
+}
+
+class _RemoteChatPageState extends State<RemoteChatPage> {
+  final controller = TextEditingController();
+  bool sending = false;
+  String? sendError;
+  CollectionReference<Map<String, dynamic>> get messages =>
+    FirebaseFirestore.instance.collection('rooms').doc('general').collection('messages');
+
+  Future<void> send() async {
+    final text = controller.text.trim();
+    final user = FirebaseAuth.instance.currentUser;
+    if (text.isEmpty || user == null || sending) return;
+    setState(() { sending = true; sendError = null; });
+    try {
+      await messages.add({
+        'senderUid': user.uid,
+        'senderEmail': user.email ?? 'کاربر',
+        'text': text,
+        'createdAt': FieldValue.serverTimestamp(),
+        'kind': 'text',
+      });
+      controller.clear();
+    } on FirebaseException catch (e) {
+      setState(() => sendError = e.code == 'permission-denied'
+        ? 'دسترسی دیتابیس تنظیم نشده؛ Rules فایربیس باید نشر شود.'
+        : 'ارسال نشد: ${e.message ?? e.code}');
+    } catch (e) {
+      setState(() => sendError = 'ارسال نشد: $e');
+    } finally {
+      if (mounted) setState(() => sending = false);
+    }
+  }
+
+  String clock(Timestamp? ts) {
+    if (ts == null) return '...';
+    final d = ts.toDate().toLocal();
+    return '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
+  }
+
+  @override
+  void dispose() { controller.dispose(); super.dispose(); }
+
+  @override
+  Widget build(BuildContext context) {
+    final me = FirebaseAuth.instance.currentUser;
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF173B75), foregroundColor: Colors.white,
+        title: const Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text('Hassani Chat — اتاق عمومی'),
+          Text('پیام‌ها از طریق انترنت همگام می‌شوند', style: TextStyle(fontSize: 11, color: Colors.white70)),
+        ]),
+        actions: [IconButton(tooltip: 'خروج', onPressed: () => FirebaseAuth.instance.signOut(), icon: const Icon(Icons.logout))],
+      ),
+      body: Column(children: [
+        Container(width: double.infinity, padding: const EdgeInsets.all(10), color: const Color(0xFFE8EFFC),
+          child: Text('حساب: ${me?.email ?? ''}\nاین فعلاً یک اتاق مشترک آزمایشی است؛ هر کسی که حساب دارد می‌تواند پیام‌ها را ببیند.', style: const TextStyle(fontSize: 12))),
+        Expanded(child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+          stream: messages.orderBy('createdAt').limit(200).snapshots(),
+          builder: (context, snapshot) {
+            if (snapshot.hasError) return Center(child: Padding(padding: const EdgeInsets.all(20), child: Text('پیام‌ها بار نشدند. مطمئن شو Firestore ساخته شده و Rules نشر شده است.\n${snapshot.error}', textAlign: TextAlign.center)));
+            if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+            final docs = snapshot.data!.docs;
+            if (docs.isEmpty) return const Center(child: Text('هنوز پیامی نیست. اولین پیام را بفرست.'));
+            return ListView.builder(padding: const EdgeInsets.all(12), itemCount: docs.length, itemBuilder: (context, i) {
+              final data = docs[i].data();
+              final mine = data['senderUid'] == me?.uid;
+              return Align(alignment: mine ? Alignment.centerRight : Alignment.centerLeft, child: Container(
+                constraints: const BoxConstraints(maxWidth: 310), margin: const EdgeInsets.symmetric(vertical: 4),
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(color: mine ? const Color(0xFFDCE8FF) : Colors.white, borderRadius: BorderRadius.circular(14)),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(mine ? 'من' : (data['senderEmail'] as String? ?? 'کاربر'), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF2457A7))),
+                  const SizedBox(height: 3),
+                  Text(data['text'] as String? ?? '', style: const TextStyle(fontSize: 16)),
+                  Align(alignment: Alignment.bottomRight, child: Text(clock(data['createdAt'] as Timestamp?), style: const TextStyle(fontSize: 10, color: Colors.black54))),
+                ]),
+              ));
+            });
+          },
+        )),
+        if (sendError != null) Padding(padding: const EdgeInsets.symmetric(horizontal: 12), child: Text(sendError!, style: const TextStyle(color: Colors.red))),
+        SafeArea(child: Padding(padding: const EdgeInsets.all(8), child: Row(children: [
+          Expanded(child: TextField(controller: controller, onSubmitted: (_) => send(), textInputAction: TextInputAction.send, decoration: const InputDecoration(hintText: 'پیام بنویس...', border: OutlineInputBorder()))),
+          const SizedBox(width: 8),
+          IconButton.filled(onPressed: sending ? null : send, icon: const Icon(Icons.send)),
+        ]))),
+      ]),
+    );
+  }
+}
