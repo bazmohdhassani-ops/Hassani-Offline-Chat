@@ -116,7 +116,7 @@ class _ChatsPageState extends State<ChatsPage> {
     return Scaffold(
         appBar: AppBar(
           backgroundColor: const Color(0xFF173B75), foregroundColor: Colors.white,
-          title: const Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          title: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text('Hassani Offline Chat', style: TextStyle(fontWeight: FontWeight.bold)),
             Text(firebaseInitialized ? 'Firebase آماده شد؛ پیام‌رسانی آنلاین هنوز فعال نشده' : 'نسخهٔ آزمایشی محلی', style: TextStyle(fontSize: 12, color: Colors.white70)),
           ]),
