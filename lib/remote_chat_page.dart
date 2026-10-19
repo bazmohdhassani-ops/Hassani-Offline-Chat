@@ -1,4 +1,7 @@
+import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
@@ -108,6 +111,7 @@ class RemoteChatPage extends StatefulWidget {
 
 class _RemoteChatPageState extends State<RemoteChatPage> {
   final controller = TextEditingController();
+  final picker = ImagePicker();
   bool sending = false;
   String? sendError;
   CollectionReference<Map<String, dynamic>> get messages =>
@@ -133,6 +137,35 @@ class _RemoteChatPageState extends State<RemoteChatPage> {
         : 'ارسال نشد: ${e.message ?? e.code}');
     } catch (e) {
       setState(() => sendError = 'ارسال نشد: $e');
+    } finally {
+      if (mounted) setState(() => sending = false);
+    }
+  }
+
+  Future<void> sendImage() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null || sending) return;
+    try {
+      final picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 80, maxWidth: 1600);
+      if (picked == null || !mounted) return;
+      setState(() { sending = true; sendError = null; });
+      final file = File(picked.path);
+      final name = '${DateTime.now().millisecondsSinceEpoch}_${picked.name.replaceAll(RegExp(r'[^a-zA-Z0-9._-]'), '_')}';
+      final ref = FirebaseStorage.instance.ref('rooms/general/${user.uid}/$name');
+      final task = await ref.putFile(file, SettableMetadata(contentType: 'image/jpeg'));
+      final url = await task.ref.getDownloadURL();
+      await messages.add({
+        'senderUid': user.uid,
+        'senderEmail': user.email ?? 'کاربر',
+        'text': '',
+        'mediaUrl': url,
+        'createdAt': FieldValue.serverTimestamp(),
+        'kind': 'image',
+      });
+    } on FirebaseException catch (e) {
+      if (mounted) setState(() => sendError = 'ارسال عکس نشد: ${e.message ?? e.code}');
+    } catch (e) {
+      if (mounted) setState(() => sendError = 'ارسال عکس نشد: $e');
     } finally {
       if (mounted) setState(() => sending = false);
     }
@@ -179,7 +212,8 @@ class _RemoteChatPageState extends State<RemoteChatPage> {
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text(mine ? 'من' : (data['senderEmail'] as String? ?? 'کاربر'), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF2457A7))),
                   const SizedBox(height: 3),
-                  Text(data['text'] as String? ?? '', style: const TextStyle(fontSize: 16)),
+                  if (data['kind'] == 'image' && data['mediaUrl'] is String) Padding(padding: const EdgeInsets.symmetric(vertical: 4), child: ClipRRect(borderRadius: BorderRadius.circular(10), child: Image.network(data['mediaUrl'] as String, width: 230, fit: BoxFit.cover, loadingBuilder: (context, child, progress) => progress == null ? child : const SizedBox(width: 230, height: 140, child: Center(child: CircularProgressIndicator())), errorBuilder: (_, __, ___) => const Text('عکس بار نشد')))),
+                  if ((data['text'] as String? ?? '').isNotEmpty) Text(data['text'] as String, style: const TextStyle(fontSize: 16)),
                   Align(alignment: Alignment.bottomRight, child: Text(clock(data['createdAt'] as Timestamp?), style: const TextStyle(fontSize: 10, color: Colors.black54))),
                 ]),
               ));
@@ -190,6 +224,7 @@ class _RemoteChatPageState extends State<RemoteChatPage> {
         SafeArea(child: Padding(padding: const EdgeInsets.all(8), child: Row(children: [
           Expanded(child: TextField(controller: controller, onSubmitted: (_) => send(), textInputAction: TextInputAction.send, decoration: const InputDecoration(hintText: 'پیام بنویس...', border: OutlineInputBorder()))),
           const SizedBox(width: 8),
+          IconButton(onPressed: sending ? null : sendImage, tooltip: 'ارسال عکس آنلاین', icon: const Icon(Icons.image_outlined)),
           IconButton.filled(onPressed: sending ? null : send, icon: const Icon(Icons.send)),
         ]))),
       ]),
