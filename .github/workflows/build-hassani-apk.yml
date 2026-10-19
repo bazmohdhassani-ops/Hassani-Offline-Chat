@@ -1,11 +1,11 @@
-
-name: Build Hassani Offline Chat APK
+name: Build Hassani Chat APK
 
 on:
   workflow_dispatch:
   push:
     branches:
       - main
+      - feature/full-messaging-foundation
 
 permissions:
   contents: read
@@ -36,11 +36,14 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Build APK
-        run: flutter build apk --debug
+      - name: Analyze Dart code
+        run: flutter analyze
+
+      - name: Build release APK
+        run: flutter build apk --release
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: hassani-offline-chat-debug-apk
-          path: build/app/outputs/flutter-apk/app-debug.apk
+          name: hassani-chat-release-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
