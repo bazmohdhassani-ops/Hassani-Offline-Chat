@@ -3,13 +3,14 @@
 The current branch now contains an initial online messaging MVP:
 - Email/password registration and login using Firebase Authentication.
 - One shared Firestore chat room with live message updates.
-- Text messages only. Photos, voice messages, calls, private chats, and offline device-to-device networking are not yet connected to the online backend.
+- Text and image messages in the shared room (image uploads use Firebase Storage). Voice-message uploads, calls, private chats, and offline device-to-device networking are not yet connected to the online backend.
 
 ## One-time Firebase Console setup
 1. Open Firebase Console and select `hassani-offline-chat`.
 2. Go to **Authentication → Sign-in method** and enable **Email/Password**.
 3. Go to **Firestore Database → Create database** and create the database in production mode.
 4. In **Firestore Database → Rules**, paste the contents of this repository's `firestore.rules` and click **Publish**.
+5. In **Storage → Get started** (if not already enabled), then open **Storage → Rules**, paste the contents of this repository's `storage.rules`, and click **Publish**. Image sending will fail until Storage is enabled and these rules are published.
 
 ## Testing
 1. Install/build this branch on two Android phones.
