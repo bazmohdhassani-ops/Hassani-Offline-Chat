@@ -33,7 +33,7 @@ class HassaniChatApp extends StatelessWidget {
           colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF2563EB)),
           scaffoldBackgroundColor: const Color(0xFFF4F6FA),
         ),
-        home: firebaseInitialized ? const AuthGate() : const FirebaseUnavailablePage(),
+        home: firebaseInitialized ? const AuthGate() : const ChatsPage(),
       );
 }
 
