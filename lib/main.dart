@@ -1,11 +1,24 @@
 import 'dart:io';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:record/record.dart';
 
-void main() => runApp(const HassaniChatApp());
+bool firebaseInitialized = false;
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  try {
+    await Firebase.initializeApp(options: firebaseOptions);
+    firebaseInitialized = true;
+  } catch (_) {
+    // Keep the local demo usable when the device is offline or Firebase is unavailable.
+  }
+  runApp(const HassaniChatApp());
+}
 
 class HassaniChatApp extends StatelessWidget {
   const HassaniChatApp({super.key});
@@ -104,11 +117,11 @@ class _ChatsPageState extends State<ChatsPage> {
           backgroundColor: const Color(0xFF173B75), foregroundColor: Colors.white,
           title: const Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text('Hassani Offline Chat', style: TextStyle(fontWeight: FontWeight.bold)),
-            Text('نسخهٔ آزمایشی محلی', style: TextStyle(fontSize: 12, color: Colors.white70)),
+            Text(firebaseInitialized ? 'Firebase آماده شد؛ پیام‌رسانی آنلاین هنوز فعال نشده' : 'نسخهٔ آزمایشی محلی', style: TextStyle(fontSize: 12, color: Colors.white70)),
           ]),
           actions: [IconButton(tooltip: 'وضعیت اتصال', onPressed: () => showDialog<void>(context: context, builder: (ctx) => AlertDialog(
             title: const Text('وضعیت اتصال'),
-            content: const Text('این نسخه هنوز به گوشی‌های دیگر متصل نیست. متن، عکس و صدا فعلاً فقط در همین گوشی آزمایش می‌شوند.'),
+            content: Text(firebaseInitialized ? 'تنظیمات Firebase بارگذاری شد؛ ارسال و دریافت پیام هنوز پیاده‌سازی نشده است.' : 'Firebase راه‌اندازی نشد. این نسخه هنوز به گوشی‌های دیگر متصل نیست و پیام‌ها فقط در همین گوشی آزمایش می‌شوند.'),
             actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('فهمیدم'))],
           )), icon: const Icon(Icons.device_hub_rounded))],
         ),
