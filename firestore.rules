@@ -1,17 +1,29 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // MVP shared room: only authenticated users can read or post.
-    // This room is intentionally public to all signed-in app users.
+    // Shared test room: every authenticated user can read its messages.
+    // Do not use this public room for confidential or patient information.
     match /rooms/general/messages/{messageId} {
       allow read: if request.auth != null;
       allow create: if request.auth != null
-        && request.resource.data.keys().hasOnly(['senderUid', 'senderEmail', 'text', 'createdAt', 'kind'])
+        && request.resource.data.keys().hasOnly([
+          'senderUid', 'senderEmail', 'text', 'mediaUrl', 'createdAt', 'kind'
+        ])
         && request.resource.data.senderUid == request.auth.uid
+        && request.resource.data.senderEmail is string
         && request.resource.data.text is string
-        && request.resource.data.text.size() > 0
-        && request.resource.data.text.size() <= 4000
-        && request.resource.data.kind == 'text';
+        && request.resource.data.kind in ['text', 'image']
+        && (
+          (request.resource.data.kind == 'text'
+            && request.resource.data.text.size() > 0
+            && request.resource.data.text.size() <= 4000
+            && !('mediaUrl' in request.resource.data))
+          ||
+          (request.resource.data.kind == 'image'
+            && request.resource.data.text == ''
+            && request.resource.data.mediaUrl is string
+            && request.resource.data.mediaUrl.size() <= 2048)
+        );
       allow update, delete: if false;
     }
   }
