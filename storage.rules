@@ -1,15 +1,20 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
-    // Files in the shared test room are visible to signed-in app users.
-    // Restrict uploads to the authenticated user's own folder and image files.
-    match /rooms/general/{userId}/{fileName} {
+    // Shared test-room media: authenticated users may read, but each user
+    // can upload only to their own folder. Supports nested file paths.
+    match /rooms/general/{userId}/{filePath=**} {
       allow read: if request.auth != null;
       allow write: if request.auth != null
         && request.auth.uid == userId
         && request.resource != null
         && request.resource.size < 10 * 1024 * 1024
-        && request.resource.contentType.matches('image/.*');
+        && (
+          request.resource.contentType.matches('image/.*')
+          || request.resource.contentType.matches('audio/.*')
+          || request.resource.contentType == 'application/pdf'
+          || request.resource.contentType == 'application/octet-stream'
+        );
     }
   }
 }
