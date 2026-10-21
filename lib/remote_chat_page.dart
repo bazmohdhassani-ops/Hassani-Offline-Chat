@@ -1,4 +1,9 @@
 import 'dart:io';
+import 'package:audioplayers/audioplayers.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:record/record.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image_picker/image_picker.dart';
@@ -112,6 +117,9 @@ class RemoteChatPage extends StatefulWidget {
 class _RemoteChatPageState extends State<RemoteChatPage> {
   final controller = TextEditingController();
   final picker = ImagePicker();
+  final recorder = AudioRecorder();
+  final audioPlayer = AudioPlayer();
+  bool recording = false;
   bool sending = false;
   String? sendError;
   CollectionReference<Map<String, dynamic>> get messages =>
@@ -139,6 +147,74 @@ class _RemoteChatPageState extends State<RemoteChatPage> {
       setState(() => sendError = 'ارسال نشد: $e');
     } finally {
       if (mounted) setState(() => sending = false);
+    }
+  }
+
+  Future<void> sendFile() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null || sending) return;
+    try {
+      final picked = await FilePicker.platform.pickFiles(withData: false);
+      if (picked == null || picked.files.single.path == null || !mounted) return;
+      setState(() { sending = true; sendError = null; });
+      final selected = picked.files.single;
+      final safeName = selected.name.replaceAll(RegExp(r'[^a-zA-Z0-9._-]'), '_');
+      final ref = FirebaseStorage.instance.ref('rooms/general/${user.uid}/files/${DateTime.now().millisecondsSinceEpoch}_$safeName');
+      final type = selected.extension?.toLowerCase() == 'pdf' ? 'application/pdf' : 'application/octet-stream';
+      final task = await ref.putFile(File(selected.path!), SettableMetadata(contentType: type));
+      final url = await task.ref.getDownloadURL();
+      await messages.add({
+        'senderUid': user.uid, 'senderEmail': user.email ?? 'کاربر',
+        'text': selected.name, 'mediaUrl': url, 'fileName': selected.name,
+        'createdAt': FieldValue.serverTimestamp(), 'kind': 'file',
+      });
+    } on FirebaseException catch (e) {
+      if (mounted) setState(() => sendError = 'ارسال فایل نشد: ${e.message ?? e.code}');
+    } catch (e) {
+      if (mounted) setState(() => sendError = 'ارسال فایل نشد: $e');
+    } finally {
+      if (mounted) setState(() => sending = false);
+    }
+  }
+
+  Future<void> toggleRecording() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null || sending) return;
+    if (recording) {
+      try {
+        final path = await recorder.stop();
+        if (mounted) setState(() => recording = false);
+        if (path == null) return;
+        setState(() { sending = true; sendError = null; });
+        final name = 'voice_${DateTime.now().millisecondsSinceEpoch}.m4a';
+        final ref = FirebaseStorage.instance.ref('rooms/general/${user.uid}/$name');
+        final task = await ref.putFile(File(path), SettableMetadata(contentType: 'audio/mp4'));
+        final url = await task.ref.getDownloadURL();
+        await messages.add({
+          'senderUid': user.uid, 'senderEmail': user.email ?? 'کاربر',
+          'text': 'پیام صوتی', 'mediaUrl': url, 'fileName': name,
+          'createdAt': FieldValue.serverTimestamp(), 'kind': 'audio',
+        });
+      } on FirebaseException catch (e) {
+        if (mounted) setState(() => sendError = 'ارسال پیام صوتی نشد: ${e.message ?? e.code}');
+      } catch (e) {
+        if (mounted) setState(() => sendError = 'پیام صوتی ارسال نشد: $e');
+      } finally {
+        if (mounted) setState(() { sending = false; recording = false; });
+      }
+      return;
+    }
+    try {
+      if (!await recorder.hasPermission()) {
+        setState(() => sendError = 'اجازهٔ میکروفون داده نشده است.');
+        return;
+      }
+      final dir = await getTemporaryDirectory();
+      final path = '${dir.path}/hassani_voice_${DateTime.now().millisecondsSinceEpoch}.m4a';
+      await recorder.start(const RecordConfig(encoder: AudioEncoder.aacLc), path: path);
+      if (mounted) setState(() { recording = true; sendError = null; });
+    } catch (e) {
+      if (mounted) setState(() => sendError = 'ضبط صدا شروع نشد: $e');
     }
   }
 
@@ -178,7 +254,7 @@ class _RemoteChatPageState extends State<RemoteChatPage> {
   }
 
   @override
-  void dispose() { controller.dispose(); super.dispose(); }
+  void dispose() { controller.dispose(); recorder.dispose(); audioPlayer.dispose(); super.dispose(); }
 
   @override
   Widget build(BuildContext context) {
@@ -213,6 +289,18 @@ class _RemoteChatPageState extends State<RemoteChatPage> {
                   Text(mine ? 'من' : (data['senderEmail'] as String? ?? 'کاربر'), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF2457A7))),
                   const SizedBox(height: 3),
                   if (data['kind'] == 'image' && data['mediaUrl'] is String) Padding(padding: const EdgeInsets.symmetric(vertical: 4), child: ClipRRect(borderRadius: BorderRadius.circular(10), child: Image.network(data['mediaUrl'] as String, width: 230, fit: BoxFit.cover, loadingBuilder: (context, child, progress) => progress == null ? child : const SizedBox(width: 230, height: 140, child: Center(child: CircularProgressIndicator())), errorBuilder: (_, __, ___) => const Text('عکس بار نشد')))),
+                  if (data['kind'] == 'audio' && data['mediaUrl'] is String) Row(mainAxisSize: MainAxisSize.min, children: [
+                    IconButton(onPressed: () => audioPlayer.play(UrlSource(data['mediaUrl'] as String)), icon: const Icon(Icons.play_circle_fill)),
+                    const Text('پیام صوتی'),
+                  ]),
+                  if (data['kind'] == 'file' && data['mediaUrl'] is String) InkWell(
+                    onTap: () => launchUrl(Uri.parse(data['mediaUrl'] as String), mode: LaunchMode.externalApplication),
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      const Icon(Icons.attach_file), const SizedBox(width: 6),
+                      Flexible(child: Text(data['fileName'] as String? ?? 'بازکردن فایل', maxLines: 2, overflow: TextOverflow.ellipsis)),
+                      const Icon(Icons.open_in_new, size: 16),
+                    ]),
+                  ),
                   if ((data['text'] as String? ?? '').isNotEmpty) Text(data['text'] as String, style: const TextStyle(fontSize: 16)),
                   Align(alignment: Alignment.bottomRight, child: Text(clock(data['createdAt'] as Timestamp?), style: const TextStyle(fontSize: 10, color: Colors.black54))),
                 ]),
@@ -225,7 +313,9 @@ class _RemoteChatPageState extends State<RemoteChatPage> {
           Expanded(child: TextField(controller: controller, onSubmitted: (_) => send(), textInputAction: TextInputAction.send, decoration: const InputDecoration(hintText: 'پیام بنویس...', border: OutlineInputBorder()))),
           const SizedBox(width: 8),
           IconButton(onPressed: sending ? null : sendImage, tooltip: 'ارسال عکس آنلاین', icon: const Icon(Icons.image_outlined)),
-          IconButton.filled(onPressed: sending ? null : send, icon: const Icon(Icons.send)),
+          IconButton(onPressed: sending ? null : sendFile, tooltip: 'ارسال فایل آنلاین', icon: const Icon(Icons.attach_file)),
+          IconButton(onPressed: sending ? null : toggleRecording, tooltip: recording ? 'توقف و ارسال صدا' : 'ضبط پیام صوتی', color: recording ? Colors.red : null, icon: Icon(recording ? Icons.stop_circle : Icons.mic)),
+          IconButton.filled(onPressed: sending || recording ? null : send, icon: const Icon(Icons.send)),
         ]))),
       ]),
     );
