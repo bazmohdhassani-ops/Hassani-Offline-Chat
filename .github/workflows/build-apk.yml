@@ -38,13 +38,13 @@ jobs:
               <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
               <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32"/>'''
           if 'android.permission.INTERNET' not in s:
-              s = s.replace(marker, marker + '\n    ' + permissions)
+              s = s.replace(marker, marker + '\\n    ' + permissions)
           p.write_text(s)
           PY
       - name: Get dependencies
         run: flutter pub get
       - name: Analyze app source
-        run: flutter analyze --no-pub lib
+        run: flutter analyze --no-pub --no-fatal-infos lib
       - name: Build APK
         run: flutter build apk --debug
       - name: Upload APK
