@@ -33,6 +33,24 @@ jobs:
       - name: Create Android platform files
         run: flutter create --platforms=android .
 
+      - name: Set Android compile SDK to 36
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          for name in ('android/app/build.gradle.kts', 'android/app/build.gradle'):
+              p = Path(name)
+              if p.exists():
+                  s = p.read_text()
+                  s, n = re.subn(r'compileSdk\s*=\s*flutter\.compileSdkVersion', 'compileSdk = 36', s)
+                  if not n:
+                      s, n = re.subn(r'compileSdkVersion\s+flutter\.compileSdkVersion', 'compileSdkVersion 36', s)
+                  p.write_text(s)
+                  print(f'{name}: updated={bool(n)}')
+                  break
+          else:
+              raise SystemExit('Android app Gradle file not found')
+          PY
       - name: Add Android microphone and media permissions
         run: |
           python3 - <<'PY'
