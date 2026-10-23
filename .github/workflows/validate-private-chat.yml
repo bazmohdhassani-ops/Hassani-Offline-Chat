@@ -1,0 +1,70 @@
+name: Validate Lets Talk
+
+on:
+  pull_request:
+    branches:
+      - feature/full-messaging-foundation
+  push:
+    branches:
+      - codex/private-chat-foundation
+      - feature/full-messaging-foundation
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  flutter-validation:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Generate missing Android platform scaffold
+        run: flutter create --platforms=android --org com.hassani.letstalk .
+      - name: Set Android compile SDK
+        run: sed -i 's/compileSdk = flutter.compileSdkVersion/compileSdk = 36/' android/app/build.gradle.kts
+      - name: Remove generated placeholder test
+        run: |
+          if [ -f test/widget_test.dart ] && grep -q 'MyApp' test/widget_test.dart; then
+            rm test/widget_test.dart
+          fi
+      - name: Install dependencies
+        run: flutter pub get
+      - name: Set file_picker Android compile SDK
+        run: |
+          FILE_PICKER_PACKAGE="$(find "$HOME/.pub-cache/hosted/pub.dev" -maxdepth 1 -type d -name 'file_picker-*' | sort -V | tail -n 1)"
+          if [ -z "$FILE_PICKER_PACKAGE" ]; then
+            echo "file_picker package was not found in pub cache"
+            exit 1
+          fi
+          FILE_PICKER_ANDROID="$FILE_PICKER_PACKAGE/android"
+          echo "Patching $FILE_PICKER_ANDROID"
+          find "$FILE_PICKER_ANDROID" -type f \( -name 'build.gradle' -o -name 'build.gradle.kts' \) -print0 |
+            while IFS= read -r -d '' GRADLE_FILE; do
+              sed -i -E \
+                -e 's/compileSdkVersion[[:space:]]+34/compileSdkVersion 36/g' \
+                -e 's/compileSdk[[:space:]]*=[[:space:]]*34/compileSdk = 36/g' \
+                -e 's/compileSdkVersion[[:space:]]+flutter\.compileSdkVersion/compileSdkVersion 36/g' \
+                -e 's/compileSdk[[:space:]]*=[[:space:]]*flutter\.compileSdkVersion/compileSdk = 36/g' \
+                "$GRADLE_FILE"
+              echo "--- $GRADLE_FILE"
+              grep -nE 'compileSdk|compileSdkVersion' "$GRADLE_FILE" || true
+            done
+      - name: Analyze
+        run: flutter analyze --no-fatal-infos
+      - name: Run tests
+        run: flutter test
+      - name: Build Android APK
+        run: flutter build apk --debug
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: lets-talk-debug-apk
+          path: build/app/outputs/flutter-apk/app-debug.apk
+          if-no-files-found: error
+          retention-days: 14
