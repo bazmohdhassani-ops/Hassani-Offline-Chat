@@ -85,7 +85,7 @@ class _AuthPageState extends State<AuthPage> {
         mainAxisAlignment: MainAxisAlignment.center, children: [
           const Icon(Icons.forum_rounded, size: 72, color: Color(0xFF173B75)),
           const SizedBox(height: 12),
-          const Text('Hassani Offline Chat', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+          const Text('Lets Talk', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
           Text(registering ? 'ساخت حساب جدید' : 'ورود به حساب', style: const TextStyle(fontSize: 18)),
           const SizedBox(height: 20),
@@ -263,7 +263,7 @@ class _RemoteChatPageState extends State<RemoteChatPage> {
       appBar: AppBar(
         backgroundColor: const Color(0xFF173B75), foregroundColor: Colors.white,
         title: const Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('Hassani Chat — اتاق عمومی'),
+          Text('Lets Talk — اتاق عمومی'),
           Text('پیام‌ها از طریق انترنت همگام می‌شوند', style: TextStyle(fontSize: 11, color: Colors.white70)),
         ]),
         actions: [IconButton(tooltip: 'خروج', onPressed: () => FirebaseAuth.instance.signOut(), icon: const Icon(Icons.logout))],
