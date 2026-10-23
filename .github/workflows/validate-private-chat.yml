@@ -37,14 +37,20 @@ jobs:
         run: flutter pub get
       - name: Set file_picker Android compile SDK
         run: |
-          find "$HOME/.pub-cache/hosted/pub.dev" -path '*/file_picker-*/android/*gradle*' -type f -print0 |
+          FILE_PICKER_ANDROID="$HOME/.pub-cache/hosted/pub.dev/file_picker-8.1.7/android"
+          echo "Inspecting file_picker Gradle files in $FILE_PICKER_ANDROID"
+          find "$FILE_PICKER_ANDROID" -type f \( -name 'build.gradle' -o -name 'build.gradle.kts' \) -print
+          find "$FILE_PICKER_ANDROID" -type f \( -name 'build.gradle' -o -name 'build.gradle.kts' \) -print0 |
             while IFS= read -r -d '' GRADLE_FILE; do
               sed -i -E \
                 -e 's/compileSdkVersion[[:space:]]+34/compileSdkVersion 36/g' \
                 -e 's/compileSdk[[:space:]]*=[[:space:]]*34/compileSdk = 36/g' \
+                -e 's/compileSdkVersion[[:space:]]+flutter\.compileSdkVersion/compileSdkVersion 36/g' \
+                -e 's/compileSdk[[:space:]]*=[[:space:]]*flutter\.compileSdkVersion/compileSdk = 36/g' \
                 "$GRADLE_FILE"
+              echo "--- $GRADLE_FILE"
+              grep -nE 'compileSdk|compileSdkVersion' "$GRADLE_FILE" || true
             done
-          echo "file_picker Gradle compile SDK patch applied where a hard-coded API 34 setting exists."
       - name: Analyze
         run: flutter analyze --no-fatal-infos
       - name: Run tests
