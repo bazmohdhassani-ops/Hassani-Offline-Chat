@@ -62,29 +62,43 @@ jobs:
           PY
       - name: Get dependencies
         run: flutter pub get
-      - name: Patch plugin compile SDK to 36
+      - name: Force Android compile SDK 36 for affected plugins
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          import re
-          roots = [Path('android'), Path.home() / '.pub-cache' / 'hosted' / 'pub.dev']
-          changed = 0
-          for root in roots:
-              if not root.exists():
-                  continue
-              for p in root.rglob('build.gradle*'):
-                  try:
-                      s = p.read_text()
-                  except (OSError, UnicodeDecodeError):
-                      continue
-                  updated = re.sub(r'compileSdk\s*=\s*(?:flutter\.)?compileSdkVersion', 'compileSdk = 36', s)
-                  updated = re.sub(r'compileSdk\s*=\s*\d+', 'compileSdk = 36', updated)
-                  updated = re.sub(r'compileSdkVersion\s+(?:flutter\.)?compileSdkVersion', 'compileSdkVersion 36', updated)
-                  updated = re.sub(r'compileSdkVersion\s+\d+', 'compileSdkVersion 36', updated)
-                  if updated != s:
-                      p.write_text(updated)
-                      changed += 1
-          print(f'Patched {changed} Gradle files for Android compile SDK 36')
+          import json, re
+
+          metadata = Path('.flutter-plugins-dependencies')
+          plugin_roots = []
+          if metadata.exists():
+              data = json.loads(metadata.read_text())
+              for plugin in data.get('plugins', {}).get('android', []):
+                  name = plugin.get('name', '')
+                  if name in ('file_picker', 'flutter_plugin_android_lifecycle'):
+                      p = Path(plugin.get('path', ''))
+                      if p.exists():
+                          plugin_roots.append((name, p / 'android'))
+
+          for name, root in plugin_roots:
+              print(f'Inspecting {name}: {root}')
+              for gradle in list(root.glob('build.gradle')) + list(root.glob('build.gradle.kts')):
+                  s = gradle.read_text()
+                  lines = s.splitlines()
+                  out = []
+                  changed = False
+                  for line in lines:
+                      if re.search(r'\bcompileSdk(?:Version)?\b', line) and not line.lstrip().startswith('//'):
+                          indent = line[:len(line) - len(line.lstrip())]
+                          if 'compileSdkVersion' in line:
+                              line = indent + 'compileSdkVersion 36'
+                          else:
+                              line = indent + 'compileSdk = 36'
+                          changed = True
+                      out.append(line)
+                  if changed:
+                      gradle.write_text('\n'.join(out) + '\n')
+                  print(f'  {gradle}: patched={changed}')
+                  print('\n'.join(x.strip() for x in out if 'compileSdk' in x))
           PY
       - name: Analyze app source
         run: flutter analyze --no-pub --no-fatal-infos lib
