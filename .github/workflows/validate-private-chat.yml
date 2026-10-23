@@ -37,9 +37,13 @@ jobs:
         run: flutter pub get
       - name: Set file_picker Android compile SDK
         run: |
-          FILE_PICKER_ANDROID="$HOME/.pub-cache/hosted/pub.dev/file_picker-8.1.7/android"
-          echo "Inspecting file_picker Gradle files in $FILE_PICKER_ANDROID"
-          find "$FILE_PICKER_ANDROID" -type f \( -name 'build.gradle' -o -name 'build.gradle.kts' \) -print
+          FILE_PICKER_PACKAGE="$(find "$HOME/.pub-cache/hosted/pub.dev" -maxdepth 1 -type d -name 'file_picker-*' | sort -V | tail -n 1)"
+          if [ -z "$FILE_PICKER_PACKAGE" ]; then
+            echo "file_picker package was not found in pub cache"
+            exit 1
+          fi
+          FILE_PICKER_ANDROID="$FILE_PICKER_PACKAGE/android"
+          echo "Patching $FILE_PICKER_ANDROID"
           find "$FILE_PICKER_ANDROID" -type f \( -name 'build.gradle' -o -name 'build.gradle.kts' \) -print0 |
             while IFS= read -r -d '' GRADLE_FILE; do
               sed -i -E \
