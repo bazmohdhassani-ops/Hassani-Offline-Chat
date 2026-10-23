@@ -77,7 +77,6 @@ jobs:
                   if item.get('name') in targets and item.get('path'):
                       root = Path(item['path'])
                       roots.add(root / 'android' if (root / 'android').is_dir() else root)
-
           cache = Path.home() / '.pub-cache' / 'hosted' / 'pub.dev'
           if cache.exists():
               for name in targets:
@@ -90,19 +89,22 @@ jobs:
               for gradle in [*root.glob('build.gradle'), *root.glob('build.gradle.kts')]:
                   found.add(gradle.parent.parent.name)
                   source = gradle.read_text()
-                  # Replace the compile SDK expression whether Groovy or Kotlin DSL.
-                  updated, count = re.subn(
-                      r'(?m)^(\s*)compileSdk(?:Version)?\s*(?:=\s*)?[^\n]+',
-                      lambda m: m.group(1) + ('compileSdkVersion 36' if 'compileSdkVersion' in m.group(0) else 'compileSdk = 36'),
-                      source
-                  )
+                  if gradle.name.endswith('.kts'):
+                      updated, count = re.subn(
+                          r'(?m)^(\s*)compileSdk(?:Version)?\s*(?:=\s*)?[^\n]+',
+                          lambda m: m.group(1) + 'compileSdk = 36',
+                          source)
+                  else:
+                      updated, count = re.subn(
+                          r'(?m)^(\s*)compileSdk(?:Version)?\s*(?:=\s*)?[^\n]+',
+                          lambda m: m.group(1) + 'compileSdkVersion 36',
+                          source)
                   if count:
                       gradle.write_text(updated)
                   print(f'{gradle}: replacements={count}')
                   for line in updated.splitlines():
                       if 'compileSdk' in line:
                           print('  ' + line.strip())
-
           missing = targets - found
           if missing:
               print('WARNING: plugin Gradle files not found for: ' + ', '.join(sorted(missing)))
