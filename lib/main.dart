@@ -6,7 +6,6 @@ import 'firebase_options.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:record/record.dart';
-import 'remote_chat_page.dart';
 
 bool firebaseInitialized = false;
 
@@ -108,7 +107,7 @@ class _CallAction extends StatelessWidget {
   final Color color;
   @override
   Widget build(BuildContext context) => Expanded(child: Column(children: [
-    Container(width: 58, height: 58, decoration: BoxDecoration(color: color.withOpacity(.16), shape: BoxShape.circle), child: Icon(icon, color: color, size: 27)),
+    Container(width: 58, height: 58, decoration: BoxDecoration(color: color.withValues(alpha: .16), shape: BoxShape.circle), child: Icon(icon, color: color, size: 27)),
     const SizedBox(height: 8), Text(label, style: const TextStyle(fontSize: 11, color: Color(0xFFB0BEC5))),
   ]));
 }
