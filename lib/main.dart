@@ -27,7 +27,7 @@ class HassaniChatApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) => MaterialApp(
         debugShowCheckedModeBanner: false,
-        title: 'Hassani Chat',
+        title: 'Lets Talk',
         theme: ThemeData(
           useMaterial3: true,
           brightness: Brightness.dark,
@@ -82,7 +82,7 @@ class CallsPage extends StatelessWidget {
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: const Text('تماس‌ها', style: TextStyle(fontSize: 28)), actions: [
       IconButton(onPressed: () => showSearch(context: context, delegate: _SimpleSearchDelegate('جستجوی تماس')), icon: const Icon(Icons.search)),
-      IconButton(onPressed: () => showAboutDialog(context: context, applicationName: 'Hassani Chat', children: const [Text('تماس‌های واقعی هنوز در این نسخه فعال نیستند.')]), icon: const Icon(Icons.more_vert)),
+      IconButton(onPressed: () => showAboutDialog(context: context, applicationName: 'Lets Talk', children: const [Text('تماس‌های واقعی هنوز در این نسخه فعال نیستند.')]), icon: const Icon(Icons.more_vert)),
     ]),
     body: ListView(padding: const EdgeInsets.all(18), children: [
       Row(children: [
@@ -131,7 +131,7 @@ class UpdatesPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: const Text('وضعیت‌ها', style: TextStyle(fontSize: 28)), actions: [
-      IconButton(onPressed: () => showAboutDialog(context: context, applicationName: 'Hassani Chat', children: const [Text('انتشار وضعیت واقعی در نسخهٔ آینده اضافه می‌شود.')]), icon: const Icon(Icons.more_vert)),
+      IconButton(onPressed: () => showAboutDialog(context: context, applicationName: 'Lets Talk', children: const [Text('انتشار وضعیت واقعی در نسخهٔ آینده اضافه می‌شود.')]), icon: const Icon(Icons.more_vert)),
     ]),
     body: ListView(padding: const EdgeInsets.all(18), children: [
       const Text('وضعیت من', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
@@ -168,14 +168,14 @@ class ToolsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: const Text('ابزارها', style: TextStyle(fontSize: 28)), actions: [
-      IconButton(onPressed: () => showAboutDialog(context: context, applicationName: 'Hassani Chat', children: const [Text('نسخهٔ آزمایشی Hassani Chat')]), icon: const Icon(Icons.more_vert)),
+      IconButton(onPressed: () => showAboutDialog(context: context, applicationName: 'Lets Talk', children: const [Text('نسخهٔ آزمایشی Lets Talk')]), icon: const Icon(Icons.more_vert)),
     ]),
     body: ListView(padding: const EdgeInsets.all(18), children: [
       const Text('حساب من', style: TextStyle(fontSize: 21, fontWeight: FontWeight.bold)),
       const SizedBox(height: 12),
       Card(color: const Color(0xFF0D202B), child: const ListTile(
         leading: CircleAvatar(backgroundColor: Color(0xFF123B38), child: Icon(Icons.person, color: Color(0xFF00D6A0))),
-        title: Text('Hassani Chat'), subtitle: Text('پیام‌رسان شخصی و مستقل'),
+        title: Text('Lets Talk'), subtitle: Text('پیام‌رسان خصوصی شما'),
       )),
       const SizedBox(height: 24),
       const Text('مدیریت', style: TextStyle(fontSize: 21, fontWeight: FontWeight.bold)),
@@ -258,7 +258,7 @@ class ChatsPage extends StatefulWidget {
 class _ChatsPageState extends State<ChatsPage> {
   String query = '';
   final List<Chat> chats = [
-    Chat('گفتگوی آزمایشی', 'به Hassani Offline Chat خوش آمدی', 'اکنون'),
+    Chat('گفتگوی آزمایشی', 'به Lets Talk خوش آمدی', 'اکنون'),
     Chat('گروه دوستان', 'گروه نمونه برای آزمایش', 'دیروز', group: true),
     Chat('همکاران شفاخانه', 'گفتگوی محلی آزمایشی', 'دیروز', group: true),
   ];
@@ -306,8 +306,8 @@ class _ChatsPageState extends State<ChatsPage> {
         appBar: AppBar(
           backgroundColor: const Color(0xFF061018), foregroundColor: Colors.white,
           title: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('Hassani Offline Chat', style: TextStyle(fontWeight: FontWeight.bold)),
-            Text(firebaseInitialized ? 'Firebase آماده شد؛ پیام‌رسانی آنلاین هنوز فعال نشده' : 'نسخهٔ آزمایشی محلی', style: TextStyle(fontSize: 12, color: Colors.white70)),
+            Text('Lets Talk', style: TextStyle(fontWeight: FontWeight.bold)),
+            Text(firebaseInitialized ? 'Lets Talk • سریع، امن، خصوصی' : 'Lets Talk • پیام‌رسان', style: TextStyle(fontSize: 12, color: Colors.white70)),
           ]),
           actions: [IconButton(tooltip: 'وضعیت اتصال', onPressed: () => showDialog<void>(context: context, builder: (ctx) => AlertDialog(
             title: const Text('وضعیت اتصال'),
