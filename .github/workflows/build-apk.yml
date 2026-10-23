@@ -31,15 +31,16 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           import re
-          for name in ('android/app/build.gradle.kts', 'android/app/build.gradle'):
-              p = Path(name)
-              if p.exists():
-                  s = p.read_text()
-                  s, n = re.subn(r'compileSdk\s*=\s*flutter\.compileSdkVersion', 'compileSdk = 36', s)
-                  if not n:
-                      s, n = re.subn(r'compileSdkVersion\s+flutter\.compileSdkVersion', 'compileSdkVersion 36', s)
-                  p.write_text(s)
-                  print(f'{name}: updated={bool(n)}')
+          candidates = (Path('android/app/build.gradle.kts'), Path('android/app/build.gradle'))
+          for p in candidates:
+              if not p.exists():
+                  continue
+              s = p.read_text()
+              s, n1 = re.subn(r'compileSdk\s*=\s*[^\s]+', 'compileSdk = 36', s)
+              s, n2 = re.subn(r'compileSdkVersion\s+[^\s]+', 'compileSdkVersion 36', s)
+              p.write_text(s)
+              print(f'{p}: compileSdk updated={bool(n1 or n2)}')
+              if n1 or n2:
                   break
           else:
               raise SystemExit('Android app Gradle file not found')
