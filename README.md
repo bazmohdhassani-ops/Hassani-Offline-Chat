@@ -29,3 +29,8 @@ The rules in the repository do not become active in Firebase until you publish t
 
 ## APK build
 The workflow at .github/workflows/build-apk.yml runs on pushes to feature/full-messaging-foundation. Open the repository's **Actions** tab, select the latest **Build Android APK** run, and download the artifact named hassani-offline-chat-apk if the run succeeds.
+
+## Encryption work in progress
+- `lib/security/message_cipher.dart` now provides AES-256-GCM encryption/decryption for text payloads, with an authentication tag and nonce.
+- Unit tests cover round-trip encryption, tampering rejection, and key-length validation.
+- **This is not yet end-to-end encryption in the running app.** Secure contact key exchange, protected key storage, and wiring the cipher into private-chat send/receive still need implementation and device testing. Do not treat the current app as a secure private messenger yet.
