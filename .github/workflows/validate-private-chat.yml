@@ -26,6 +26,8 @@ jobs:
           cache: true
       - name: Generate missing Android platform scaffold
         run: flutter create --platforms=android --org com.hassani.letstalk .
+      - name: Set Android compile SDK
+        run: sed -i 's/compileSdk = flutter.compileSdkVersion/compileSdk = 36/' android/app/build.gradle.kts
       - name: Remove generated placeholder test
         run: |
           if [ -f test/widget_test.dart ] && grep -q 'MyApp' test/widget_test.dart; then
