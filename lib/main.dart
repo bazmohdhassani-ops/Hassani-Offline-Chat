@@ -108,7 +108,7 @@ class _CallAction extends StatelessWidget {
   final Color color;
   @override
   Widget build(BuildContext context) => Expanded(child: Column(children: [
-    Container(width: 58, height: 58, decoration: BoxDecoration(color: color.withValues(alpha: .16), shape: BoxShape.circle), child: Icon(icon, color: color, size: 27)),
+    Container(width: 58, height: 58, decoration: BoxDecoration(color: color.withOpacity(.16), shape: BoxShape.circle), child: Icon(icon, color: color, size: 27)),
     const SizedBox(height: 8), Text(label, style: const TextStyle(fontSize: 11, color: Color(0xFFB0BEC5))),
   ]));
 }
@@ -201,7 +201,7 @@ class _ToolTile extends StatelessWidget {
 }
 
 class _SimpleSearchDelegate extends SearchDelegate<String> {
-  _SimpleSearchDelegate(String hint) { this.hint = hint; }
+  _SimpleSearchDelegate(String hint) : super(searchFieldLabel: hint);
   @override
   List<Widget>? buildActions(BuildContext context) => [IconButton(onPressed: () => query = '', icon: const Icon(Icons.clear))];
   @override
