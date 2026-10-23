@@ -33,8 +33,70 @@ class HassaniChatApp extends StatelessWidget {
           colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF2563EB)),
           scaffoldBackgroundColor: const Color(0xFFF4F6FA),
         ),
-        home: firebaseInitialized ? const AuthGate() : const ChatsPage(),
+        home: const AppShell(),
       );
+}
+
+
+class AppShell extends StatefulWidget {
+  const AppShell({super.key});
+  @override
+  State<AppShell> createState() => _AppShellState();
+}
+
+class _AppShellState extends State<AppShell> {
+  int selectedIndex = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    final pages = <Widget>[
+      const ChatsPage(),
+      firebaseInitialized
+          ? const AuthGate()
+          : const FirebaseUnavailablePage(),
+      const AppInfoPage(),
+    ];
+    return Scaffold(
+      body: IndexedStack(index: selectedIndex, children: pages),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: selectedIndex,
+        onDestinationSelected: (index) => setState(() => selectedIndex = index),
+        destinations: const [
+          NavigationDestination(icon: Icon(Icons.chat_bubble_outline), selectedIcon: Icon(Icons.chat_bubble), label: 'چت‌ها'),
+          NavigationDestination(icon: Icon(Icons.public), selectedIcon: Icon(Icons.public), label: 'چت آنلاین'),
+          NavigationDestination(icon: Icon(Icons.settings_outlined), selectedIcon: Icon(Icons.settings), label: 'تنظیمات'),
+        ],
+      ),
+    );
+  }
+}
+
+class AppInfoPage extends StatelessWidget {
+  const AppInfoPage({super.key});
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(title: const Text('تنظیمات و وضعیت')),
+    body: ListView(padding: const EdgeInsets.all(16), children: [
+      const ListTile(
+        leading: Icon(Icons.chat_bubble_outline),
+        title: Text('چت محلی'),
+        subtitle: Text('از بخش «چت‌ها» برای آزمایش پیام متنی، عکس و ضبط صدای محلی استفاده کن.'),
+      ),
+      ListTile(
+        leading: Icon(firebaseInitialized ? Icons.cloud_done : Icons.cloud_off),
+        title: const Text('اتصال آنلاین'),
+        subtitle: Text(firebaseInitialized
+          ? 'Firebase راه‌اندازی شده؛ از بخش «چت آنلاین» وارد اتاق عمومی شو.'
+          : 'Firebase وصل نیست؛ اتاق آنلاین در دسترس نیست.'),
+      ),
+      const Divider(),
+      const ListTile(
+        leading: Icon(Icons.info_outline),
+        title: Text('قابلیت‌های هنوز تکمیل‌نشده'),
+        subtitle: Text('تماس صوتی/تصویری واقعی، چت خصوصی و اتصال مستقیم آفلاین بین گوشی‌ها هنوز پیاده‌سازی نشده‌اند.'),
+      ),
+    ]),
+  );
 }
 
 class Chat {
