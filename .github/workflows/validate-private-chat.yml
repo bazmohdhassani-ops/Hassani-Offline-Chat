@@ -35,6 +35,12 @@ jobs:
           fi
       - name: Install dependencies
         run: flutter pub get
+      - name: Set file_picker Android compile SDK
+        run: |
+          PICKER_GRADLE=$(find "$HOME/.pub-cache/hosted/pub.dev" -path '*/file_picker-*/android/build.gradle' -print -quit)
+          if [ -n "$PICKER_GRADLE" ]; then
+            sed -i -E 's/compileSdkVersion[[:space:]]+34/compileSdkVersion 36/g; s/compileSdk[[:space:]]*=[[:space:]]*34/compileSdk = 36/g' "$PICKER_GRADLE"
+          fi
       - name: Analyze
         run: flutter analyze --no-fatal-infos
       - name: Run tests
