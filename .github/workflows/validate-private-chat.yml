@@ -26,6 +26,11 @@ jobs:
           cache: true
       - name: Generate missing Android platform scaffold
         run: flutter create --platforms=android --org com.hassani.letstalk .
+      - name: Remove generated placeholder test
+        run: |
+          if [ -f test/widget_test.dart ] && grep -q 'MyApp' test/widget_test.dart; then
+            rm test/widget_test.dart
+          fi
       - name: Install dependencies
         run: flutter pub get
       - name: Analyze
