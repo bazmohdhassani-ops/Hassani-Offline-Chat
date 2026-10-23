@@ -77,37 +77,44 @@ jobs:
           from pathlib import Path
           import json, re
 
+          targets = {'file_picker', 'flutter_plugin_android_lifecycle'}
+          roots = set()
           metadata = Path('.flutter-plugins-dependencies')
-          plugin_roots = []
           if metadata.exists():
               data = json.loads(metadata.read_text())
-              for plugin in data.get('plugins', {}).get('android', []):
-                  name = plugin.get('name', '')
-                  if name in ('file_picker', 'flutter_plugin_android_lifecycle'):
-                      p = Path(plugin.get('path', ''))
-                      if p.exists():
-                          plugin_roots.append((name, p / 'android'))
+              for item in data.get('plugins', {}).get('android', []):
+                  if item.get('name') in targets and item.get('path'):
+                      root = Path(item['path'])
+                      roots.add(root / 'android' if (root / 'android').is_dir() else root)
 
-          for name, root in plugin_roots:
-              print(f'Inspecting {name}: {root}')
-              for gradle in list(root.glob('build.gradle')) + list(root.glob('build.gradle.kts')):
-                  s = gradle.read_text()
-                  lines = s.splitlines()
-                  out = []
-                  changed = False
-                  for line in lines:
-                      if re.search(r'\bcompileSdk(?:Version)?\b', line) and not line.lstrip().startswith('//'):
-                          indent = line[:len(line) - len(line.lstrip())]
-                          if 'compileSdkVersion' in line:
-                              line = indent + 'compileSdkVersion 36'
-                          else:
-                              line = indent + 'compileSdk = 36'
-                          changed = True
-                      out.append(line)
-                  if changed:
-                      gradle.write_text('\n'.join(out) + '\n')
-                  print(f'  {gradle}: patched={changed}')
-                  print('\n'.join(x.strip() for x in out if 'compileSdk' in x))
+          cache = Path.home() / '.pub-cache' / 'hosted' / 'pub.dev'
+          if cache.exists():
+              for name in targets:
+                  roots.update(cache.glob(name + '-*/android'))
+
+          found = set()
+          for root in roots:
+              if not root.exists():
+                  continue
+              for gradle in [*root.glob('build.gradle'), *root.glob('build.gradle.kts')]:
+                  found.add(gradle.parent.parent.name)
+                  source = gradle.read_text()
+                  # Replace the compile SDK expression whether Groovy or Kotlin DSL.
+                  updated, count = re.subn(
+                      r'(?m)^(\s*)compileSdk(?:Version)?\s*(?:=\s*)?[^\n]+',
+                      lambda m: m.group(1) + ('compileSdkVersion 36' if 'compileSdkVersion' in m.group(0) else 'compileSdk = 36'),
+                      source
+                  )
+                  if count:
+                      gradle.write_text(updated)
+                  print(f'{gradle}: replacements={count}')
+                  for line in updated.splitlines():
+                      if 'compileSdk' in line:
+                          print('  ' + line.strip())
+
+          missing = targets - found
+          if missing:
+              print('WARNING: plugin Gradle files not found for: ' + ', '.join(sorted(missing)))
           PY
       - name: Build release APK
         run: flutter build apk --release
