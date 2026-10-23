@@ -1,20 +1,33 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
-    // Shared test-room media: authenticated users may read, but each user
-    // can upload only to their own folder. Supports nested file paths.
-    match /rooms/general/{userId}/{filePath=**} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null
+    function signedIn() {
+      return request.auth != null;
+    }
+    function isChatParticipant(chatId) {
+      return signedIn()
+        && firestore.get(/databases/(default)/documents/chats/$(chatId)).data.participants.hasAny([request.auth.uid]);
+    }
+
+    // Media is scoped to a private chat and stored under the uploading user's UID.
+    // Clients must encrypt file bytes before upload for true end-to-end privacy.
+    match /chats/{chatId}/{userId}/{filePath=**} {
+      allow read: if isChatParticipant(chatId);
+      allow write: if isChatParticipant(chatId)
         && request.auth.uid == userId
         && request.resource != null
-        && request.resource.size < 10 * 1024 * 1024
+        && request.resource.size < 20 * 1024 * 1024
         && (
           request.resource.contentType.matches('image/.*')
           || request.resource.contentType.matches('audio/.*')
           || request.resource.contentType == 'application/pdf'
           || request.resource.contentType == 'application/octet-stream'
         );
+    }
+
+    // Legacy public-room uploads are disabled.
+    match /rooms/{roomId}/{filePath=**} {
+      allow read, write: if false;
     }
   }
 }
